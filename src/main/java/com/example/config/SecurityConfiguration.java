@@ -72,6 +72,7 @@ public class SecurityConfiguration {
                                             Authentication authentication) throws IOException{
         response.setContentType("application/json");
         response.setCharacterEncoding("utf-8");
+
         User user = (User) authentication.getPrincipal();
         Account account=service.findUserByNameOeEmail(user.getUsername());
         String token = jwtUtils.createJWT(user,account.getId(),account.getUsername());
@@ -79,7 +80,6 @@ public class SecurityConfiguration {
             v.setToken(token);
             v.setExpire(jwtUtils.expireTime());
         });
-
         response.getWriter().write(RestBean.success(vo).asJsonString());
     }
 
