@@ -3,9 +3,7 @@ package com.example.service.impl;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.entity.dto.Account;
-import com.example.entity.vo.request.ConfirmResetVO;
-import com.example.entity.vo.request.EmailRegisterVO;
-import com.example.entity.vo.request.EmailResetVO;
+import com.example.entity.vo.request.*;
 import com.example.mapper.AccountMapper;
 import com.example.service.AccountService;
 import com.example.utils.Const;
@@ -83,7 +81,7 @@ public class AccountServiceImpl extends ServiceImpl<AccountMapper, Account> impl
         if (existsAccountByEmail(email)) return "此电子邮件已被注册";
         if (existsAccountByUsername(username)) return "用户名已被注册，请更换后再次尝试";
         String password = encoder.encode(emailRegisterVO.getPassword()) ;
-        Account account = new Account(null, username,password,email,"user",new Date());
+        Account account = new Account(null, username,password,email,"user",null,new Date());
         if (this.save(account)) {
             stringRedisTemplate.delete(key);
             return null;
@@ -119,6 +117,35 @@ public class AccountServiceImpl extends ServiceImpl<AccountMapper, Account> impl
         return this.query().eq("id",id).one();
     }
 
+    @Override
+    public String modifyEmail(int id, ModifyEmailVO vo) {
+        String email = vo.getEmail();
+        String code = getEmailVerifyCode(email);
+        if (code == null) return "请先获取验证码！";
+        if (!code.equals(vo.getCode())) return "验证码错误！";
+        this.deleteEmailVerifyCode(email);
+        Account account = this.findUserByNameOeEmail(email);
+        if (account!=null&& account.getId()!=id)
+            return "该电子邮件已被其他账号绑定，无法进行此操作！";
+        this.update()
+                .set("email",email)
+                .eq("id",id)
+                .update();
+        return null;
+    }
+
+    @Override
+    public String changePassword(int id, ChangePasswordVO vo) {
+        String password = this.query().eq("id",id).one().getPassword();
+        if (encoder.matches(vo.getPassword(),password))
+            return "原密码错误！请重新尝试";
+        boolean success = this.update()
+                .eq("id",id)
+                .set("password",encoder.encode(vo.getNew_password()))
+                .update();
+        return success?null:"未知错误！请联系管理员";
+    }
+
 
     private boolean existsAccountByEmail(String email){
         return this.baseMapper.exists(Wrappers.<Account>query().eq("email",email));
@@ -129,5 +156,26 @@ public class AccountServiceImpl extends ServiceImpl<AccountMapper, Account> impl
     private boolean verifyLimit(String ip){
         String key= Const.VERIFY_EMAIL_LIMIT+ip;
         return utils.limitOnceCheck(key,60);
+    }
+
+
+
+    /**
+     * 移除Redis中存储的邮件验证码
+     * @param email 电邮
+     */
+    private void deleteEmailVerifyCode(String email){
+        String key = Const.VERIFY_EMAIL_DATA + email;
+        stringRedisTemplate.delete(key);
+    }
+
+    /**
+     * 获取Redis中存储的邮件验证码
+     * @param email 电邮
+     * @return 验证码
+     */
+    private String getEmailVerifyCode(String email){
+        String key = Const.VERIFY_EMAIL_DATA + email;
+        return stringRedisTemplate.opsForValue().get(key);
     }
 }

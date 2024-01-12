@@ -4,21 +4,16 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.example.entity.BaseData;
-import lombok.AllArgsConstructor;
 import lombok.Data;
 
-import java.util.Date;
-
 @Data
-@TableName("db_account_jwt")
-@AllArgsConstructor
-public class Account implements BaseData {
+@TableName("db_account_privacy")
+public class AccountPrivacy implements BaseData {
     @TableId(type = IdType.AUTO)
-    Integer id;
-    String username;
-    String password;
-    String email;
-    String role;
-    String avatar;
-    Date registerTime;
+    final Integer id;
+    boolean phone = true;
+    boolean email= true;
+    boolean wx= true;
+    boolean qq= true;
+    boolean gender= true;
 }

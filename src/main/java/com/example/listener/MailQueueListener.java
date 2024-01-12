@@ -26,8 +26,11 @@ public class MailQueueListener {
         String type = (String) data.get("type");
         SimpleMailMessage message = switch (type){
             case "register" ->
-                createMessage("欢迎注册","您的注册验证码是："+code+"有效期三分钟",email);
-            case "reset" ->createMessage("密码重置邮件","您正在尝试重置账户密码,重置验证码为"+code,email);
+                    createMessage("欢迎注册","您的注册验证码是："+code+"有效期三分钟",email);
+            case "reset" ->
+                    createMessage("密码重置邮件","您正在尝试重置账户密码,重置验证码为"+code,email);
+            case "modify"->
+                    createMessage("邮件地址修改确认","您正在尝试修改绑定邮箱，验证码为："+code+",有效期三分钟",email);
             default -> throw new IllegalStateException("Unexpected value: " + type);
         };
         sender.send(message);

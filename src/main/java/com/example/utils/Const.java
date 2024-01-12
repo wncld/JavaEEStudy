@@ -17,4 +17,10 @@ public class Const {
     //用户角色
     public final static String ROLE_DEFAULT = "user";
 
+    public final static String FORUM_WEATHER_CACHE = "weather:cache:";
+    public final static String FORUM_IMAGE_COUNT = "forum:image:";
+    public final static String FORUM_TOPIC_CREATE_COUNT = "forum:topic:create:";
+    public final static String FORUM_TOPIC_PREVIEW_CACHE = "forum:preview:";
+
+
 }
