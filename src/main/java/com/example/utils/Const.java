@@ -21,6 +21,7 @@ public class Const {
     public final static String FORUM_IMAGE_COUNT = "forum:image:";
     public final static String FORUM_TOPIC_CREATE_COUNT = "forum:topic:create:";
     public final static String FORUM_TOPIC_PREVIEW_CACHE = "forum:preview:";
+    public final static String FORUM_TOPIC_COMMENT_COUNTER = "forum:topic:comment:";
 
 
 }

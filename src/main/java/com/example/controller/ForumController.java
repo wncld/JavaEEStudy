@@ -2,7 +2,9 @@ package com.example.controller;
 
 import com.example.entity.RestBean;
 import com.example.entity.dto.Interact;
+import com.example.entity.vo.request.AddCommentVO;
 import com.example.entity.vo.request.TopicCreateVO;
+import com.example.entity.vo.request.TopicUpdateVO;
 import com.example.entity.vo.response.*;
 import com.example.service.TopicService;
 import com.example.service.WeatherService;
@@ -60,8 +62,9 @@ public class ForumController {
         return RestBean.success(topicService.listTopTopics());
     }
     @GetMapping("/topic")
-    public RestBean<TopicDetailVO> topic(@RequestParam @Min(0) int tid){
-        return RestBean.success(topicService.getTopic(tid));
+    public RestBean<TopicDetailVO> topic(@RequestParam @Min(0) int tid,
+                                         @RequestAttribute(Const.ATTR_USER_ID) int id){
+        return RestBean.success(topicService.getTopic(tid,id));
     }
     @GetMapping("/interact")
     public RestBean<Void> interact(@RequestParam @Min(0) int tid,
@@ -75,5 +78,17 @@ public class ForumController {
     @GetMapping("/collects")
     public RestBean<List<TopicPreviewVO>> collects(@RequestAttribute(Const.ATTR_USER_ID) int id){
         return RestBean.success(topicService.listTopicCollects(id));
+    }
+
+    @PostMapping("/update-topic")
+    public  RestBean<Void> updateTopic(@Valid @RequestBody TopicUpdateVO vo,
+                                       @RequestAttribute(Const.ATTR_USER_ID) int id){
+        return utils.messageHandle(()->topicService.updateTopic(id,vo));
+    }
+
+    @PostMapping("/add-comment")
+    public RestBean<Void> addComment(@Valid @RequestBody AddCommentVO vo,
+                                     @RequestAttribute(Const.ATTR_USER_ID) int id){
+        return utils.messageHandle(()->topicService.createComment(id,vo));
     }
 }
