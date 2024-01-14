@@ -9,6 +9,7 @@ import com.example.entity.dto.*;
 import com.example.entity.vo.request.AddCommentVO;
 import com.example.entity.vo.request.TopicCreateVO;
 import com.example.entity.vo.request.TopicUpdateVO;
+import com.example.entity.vo.response.CommentVO;
 import com.example.entity.vo.response.TopicDetailVO;
 import com.example.entity.vo.response.TopicPreviewVO;
 import com.example.entity.vo.response.TopicTopVO;
@@ -27,6 +28,7 @@ import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import static com.example.utils.Const.FORUM_TOPIC_CREATE_COUNT;
@@ -96,7 +98,7 @@ public class TopicServiceImpl extends ServiceImpl<TopicMapper, Topic> implements
         if (type == 0)
             baseMapper.selectPage(page,Wrappers.<Topic>query().orderByDesc("time"));
         else
-            baseMapper.selectPage(page,Wrappers.<Topic>query().eq("type",type).orderByDesc("time"));;
+            baseMapper.selectPage(page,Wrappers.<Topic>query().eq("type",type).orderByDesc("time"));
         List<Topic> topics = page.getRecords();
         if (topics.isEmpty()) return null;
         list = topics.stream().map(this::resolveTOPreview).toList();
@@ -128,6 +130,7 @@ public class TopicServiceImpl extends ServiceImpl<TopicMapper, Topic> implements
         vo.setInteract(interact);
         TopicDetailVO.User user = new TopicDetailVO.User();
         vo.setUser(this.fillUserDetailsByPrivacy(user,topic.getUid()));
+        vo.setComments(topicCommentMapper.selectCount(Wrappers.<TopicComment>query().eq("tid",tid)));
         return vo;
     }
 
@@ -181,6 +184,38 @@ public class TopicServiceImpl extends ServiceImpl<TopicMapper, Topic> implements
         comment.setTime(new Date());
         topicCommentMapper.insert(comment);
         return null;
+    }
+
+    @Override
+    public List<CommentVO> comments(int tid, int pageNumber) {
+        Page<TopicComment> page = Page.of(pageNumber,10);
+        topicCommentMapper.selectPage(page,Wrappers.<TopicComment>query().eq("tid",tid));
+        return page.getRecords().stream().map(dto->{
+            CommentVO vo = new CommentVO();
+            BeanUtils.copyProperties(dto,vo);
+            if (dto.getQuote()>0){
+                TopicComment comment = topicCommentMapper.selectOne(
+                        Wrappers.<TopicComment>query().eq("id", dto.getQuote()).orderByAsc("time"));
+                if (comment!=null){
+                    JSONObject object = JSONObject.parseObject(comment.getContent());
+                    StringBuilder builder = new StringBuilder();
+                    this.shortContent(object.getJSONArray("ops"),builder,(ignore)->{});
+                    vo.setQuote(builder.toString());
+                }else {
+                    vo.setQuote("此评论已被删除");
+                }
+
+            }
+            CommentVO.User user = new CommentVO.User();
+            this.fillUserDetailsByPrivacy(user,dto.getUid());
+            vo.setUser(user);
+            return vo;
+        }).toList();
+    }
+
+    @Override
+    public void deleteComment(int id, int uid) {
+        topicCommentMapper.delete(Wrappers.<TopicComment>query().eq("id",id).eq("uid",uid));
     }
 
     private boolean hasInteract(int tid,int uid,String type){
@@ -240,6 +275,13 @@ public class TopicServiceImpl extends ServiceImpl<TopicMapper, Topic> implements
         List<String> images = new ArrayList<>();
         StringBuilder preViewText = new  StringBuilder();
         JSONArray ops =JSONObject.parseObject(topic.getContent()).getJSONArray("ops");
+        this.shortContent(ops,preViewText,obj -> images.add(obj.toString()));
+        vo.setText(preViewText.length() > 300 ? preViewText.substring(0,300) : preViewText.toString());
+        vo.setImages(images);
+        return vo;
+    }
+
+    private void shortContent(JSONArray ops, StringBuilder preViewText, Consumer<Object> imageHandler){
         for (Object op : ops) {
             Object insert = JSONObject.from(op).get("insert");
             if (insert instanceof String text){
@@ -247,12 +289,9 @@ public class TopicServiceImpl extends ServiceImpl<TopicMapper, Topic> implements
                 preViewText.append(text);
             }else if (insert instanceof Map<?,?> map){
                 Optional.ofNullable(map.get("image"))
-                        .ifPresent(obj -> images.add(obj.toString()));
+                        .ifPresent(imageHandler);
             }
         }
-        vo.setText(preViewText.length() > 300 ? preViewText.substring(0,300) : preViewText.toString());
-        vo.setImages(images);
-        return vo;
     }
 
     private boolean textLimitCheck(JSONObject object,int max){
