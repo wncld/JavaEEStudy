@@ -45,6 +45,7 @@ public class SecurityConfiguration {
                 .authorizeHttpRequests(conf-> conf
                         .requestMatchers("/api/auth/**","/error").permitAll()
                         .requestMatchers("/images/**").permitAll()
+                        .requestMatchers("/api/notification/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .formLogin(conf->conf
